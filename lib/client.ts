@@ -1,0 +1,3 @@
+export async function api<T=unknown>(url:string, options?:RequestInit):Promise<T>{const response=await fetch(url,{...options,headers:{...(options?.body?{"content-type":"application/json"}:{}),...options?.headers}});const json=await response.json();if(response.status===401&&typeof window!=="undefined"){window.location.href="/auth/login";throw new Error("Please log in")};if(!response.ok)throw new Error(json.message||"Request failed");return json.data as T}
+export const post=<T=unknown>(url:string,data?:unknown)=>api<T>(url,{method:"POST",body:JSON.stringify(data||{})});
+export const put=<T=unknown>(url:string,data?:unknown)=>api<T>(url,{method:"PUT",body:JSON.stringify(data||{})});

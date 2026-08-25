@@ -1,0 +1,1 @@
+import { MarketplaceClient } from "@/components/MarketplaceClient";export default async function Page({params}:{params:Promise<{id:string}>}){return <MarketplaceClient serviceId={(await params).id}/>}

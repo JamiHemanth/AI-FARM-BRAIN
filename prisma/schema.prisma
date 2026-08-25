@@ -1,0 +1,473 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  FARMER
+  PROVIDER
+  WORKER
+  ADMIN
+}
+
+enum FarmType {
+  AGRICULTURE
+  FISHERY
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RequirementStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  DISMISSED
+}
+
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum NotificationType {
+  ALERT
+  REQUIREMENT
+  BOOKING
+  WEATHER
+  ACTIVITY
+  SYSTEM
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          Role     @default(FARMER)
+  emailVerified DateTime?
+  language      String   @default("en")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  farms         Farm[]
+  memberships   FarmMember[]
+  otps           OtpVerification[]
+  bookings      Booking[] @relation("FarmerBookings")
+  provider      ServiceProvider?
+  worker        Worker?
+  notifications Notification[]
+  aiInteractions AiInteraction[]
+  auditLogs      AuditLog[]
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  hash      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model Farm {
+  id              String   @id @default(cuid())
+  ownerId         String
+  name            String
+  type            FarmType
+  location        String
+  state           String
+  district        String
+  village         String
+  latitude        Float?
+  longitude       Float?
+  area            Float
+  areaUnit        String   @default("acre")
+  soilType        String?
+  irrigationType  String?
+  waterSource     String?
+  farmingMethod   String?
+  waterDepth      Float?
+  healthScore     Int      @default(75)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members         FarmMember[]
+  crops           FarmCrop[]
+  conditions      FarmCondition[]
+  sensors         SensorReading[]
+  weather         WeatherReading[]
+  requirements    Requirement[]
+  recommendations Recommendation[]
+  activities      Activity[]
+  expenses        Expense[]
+  bookings        Booking[]
+  notifications   Notification[]
+  aiInteractions  AiInteraction[]
+  healthHistory   FarmHealthScore[]
+  auditLogs       AuditLog[]
+  @@index([ownerId])
+}
+
+model FarmMember {
+  id String @id @default(cuid())
+  farmId String
+  userId String
+  role Role
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([farmId, userId])
+}
+
+model Crop {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  type        FarmType @default(AGRICULTURE)
+  description String?
+  varieties   CropVariety[]
+  stages      CropStage[]
+  rules       RequirementRule[]
+  farmCrops   FarmCrop[]
+}
+
+model CropVariety {
+  id String @id @default(cuid())
+  cropId String
+  name String
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  farmCrops FarmCrop[]
+  @@unique([cropId, name])
+}
+
+model CropStage {
+  id String @id @default(cuid())
+  cropId String
+  slug String
+  name String
+  sequence Int
+  typicalDays Int?
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  farmCrops FarmCrop[]
+  rules RequirementRule[]
+  @@unique([cropId, slug])
+}
+
+model FarmCrop {
+  id String @id @default(cuid())
+  farmId String
+  cropId String
+  varietyId String?
+  stageId String
+  sowingDate DateTime?
+  stockingDate DateTime?
+  fishCount Int?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  crop Crop @relation(fields: [cropId], references: [id])
+  variety CropVariety? @relation(fields: [varietyId], references: [id])
+  stage CropStage @relation(fields: [stageId], references: [id])
+  requirements Requirement[]
+  recommendations Recommendation[]
+  bookings Booking[]
+  @@index([farmId, active])
+  @@unique([id, farmId])
+}
+
+model RequirementRule {
+  id String @id @default(cuid())
+  key String @unique
+  cropId String
+  stageId String?
+  type String
+  title String
+  basePriority Priority
+  trigger Json
+  action String
+  serviceCategory String?
+  safetyNote String?
+  active Boolean @default(true)
+  crop Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  stage CropStage? @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  @@index([cropId, stageId])
+}
+
+model FarmCondition {
+  id String @id @default(cuid())
+  farmId String
+  key String
+  value String
+  observedAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, observedAt])
+}
+
+model SensorReading {
+  id String @id @default(cuid())
+  farmId String
+  provider String @default("demo")
+  scenario String @default("normal")
+  soilMoisture Float?
+  soilTemperature Float?
+  airTemperature Float?
+  humidity Float?
+  ph Float?
+  waterLevel Float?
+  rainfall Float?
+  nitrogen Float?
+  dissolvedOxygen Float?
+  observedAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, observedAt])
+}
+
+model WeatherReading {
+  id String @id @default(cuid())
+  farmId String
+  provider String
+  temperature Float
+  humidity Float
+  rainProbability Float
+  rainfall Float
+  windSpeed Float
+  forecast Json
+  observedAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, observedAt])
+}
+
+model Requirement {
+  id String @id @default(cuid())
+  farmId String
+  farmCropId String
+  type String
+  title String
+  priority Priority
+  reason String
+  quantity String?
+  estimatedCost Float?
+  timing String
+  requiredService String?
+  riskLevel String
+  aiExplanation String
+  fingerprint String
+  status RequirementStatus @default(OPEN)
+  generatedAt DateTime @default(now())
+  completedAt DateTime?
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farmCrop FarmCrop @relation(fields: [farmCropId, farmId], references: [id, farmId], onDelete: Cascade)
+  recommendations Recommendation[]
+  bookings Booking[]
+  activities Activity[]
+  @@index([farmId, status])
+  @@unique([farmId, fingerprint, status])
+}
+
+model Recommendation {
+  id String @id @default(cuid())
+  farmId String
+  farmCropId String
+  requirementId String?
+  summary String
+  action String
+  reason String
+  safetyNote String?
+  structured Json
+  createdAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farmCrop FarmCrop @relation(fields: [farmCropId, farmId], references: [id, farmId], onDelete: Cascade)
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  @@index([farmId, createdAt])
+}
+
+model Activity {
+  id String @id @default(cuid())
+  farmId String
+  requirementId String?
+  title String
+  notes String?
+  status String @default("planned")
+  scheduledFor DateTime?
+  completedAt DateTime?
+  cost Float?
+  createdAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  @@index([farmId, createdAt])
+}
+
+model Service {
+  id String @id @default(cuid())
+  slug String @unique
+  name String
+  category String
+  unit String
+  basePrice Float
+  description String
+  active Boolean @default(true)
+  providers ServiceProviderService[]
+  bookings Booking[]
+}
+
+model ServiceProvider {
+  id String @id @default(cuid())
+  userId String @unique
+  businessName String
+  district String
+  rating Float @default(4.5)
+  verified Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services ServiceProviderService[]
+  machinery Machinery[]
+  bookings Booking[]
+}
+
+model ServiceProviderService {
+  id String @id @default(cuid())
+  providerId String
+  serviceId String
+  price Float
+  available Boolean @default(true)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@unique([providerId, serviceId])
+}
+
+model Worker {
+  id String @id @default(cuid())
+  userId String @unique
+  skills String[]
+  district String
+  available Boolean @default(true)
+  dailyRate Float
+  rating Float @default(4.5)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Machinery {
+  id String @id @default(cuid())
+  providerId String
+  type String
+  name String
+  registration String?
+  available Boolean @default(true)
+  hourlyRate Float
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id String @id @default(cuid())
+  userId String
+  farmId String
+  farmCropId String
+  requirementId String?
+  serviceId String
+  providerId String?
+  scheduledAt DateTime
+  location String
+  estimatedPrice Float
+  status BookingStatus @default(REQUESTED)
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation("FarmerBookings", fields: [userId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farmCrop FarmCrop @relation(fields: [farmCropId, farmId], references: [id, farmId])
+  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  service Service @relation(fields: [serviceId], references: [id])
+  provider ServiceProvider? @relation(fields: [providerId], references: [id])
+  history BookingStatusHistory[]
+  @@index([farmId, status])
+}
+
+model BookingStatusHistory {
+  id String @id @default(cuid())
+  bookingId String
+  status BookingStatus
+  note String?
+  createdAt DateTime @default(now())
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id String @id @default(cuid())
+  farmId String
+  category String
+  description String
+  amount Float
+  occurredAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, occurredAt])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  farmId String?
+  type NotificationType
+  title String
+  message String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt])
+}
+
+model AiInteraction {
+  id String @id @default(cuid())
+  userId String
+  farmId String
+  question String?
+  context Json
+  response Json
+  model String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, createdAt])
+}
+
+model FarmHealthScore {
+  id String @id @default(cuid())
+  farmId String
+  score Int
+  riskLevel String
+  factors Json
+  recordedAt DateTime @default(now())
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  @@index([farmId, recordedAt])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  farmId String?
+  action String
+  entity String
+  entityId String?
+  metadata Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+}

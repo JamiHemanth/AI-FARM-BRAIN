@@ -1,0 +1,16 @@
+node_modules
+.next
+.env
+.env.local
+coverage
+*.log
+.vercel
+.pgdata
+.npm-cache
+.chrome-mobile
+.runtime
+.tools
+.agents
+*.tsbuildinfo
+.ngrok-*
+scripts/

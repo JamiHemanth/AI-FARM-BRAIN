@@ -1,0 +1,1 @@
+import { Suspense } from "react";import { AiAssistantClient } from "@/components/AiAssistantClient";export const metadata={title:"AI Assistant"};export default function Page(){return <Suspense><AiAssistantClient/></Suspense>}

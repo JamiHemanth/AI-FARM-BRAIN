@@ -1,0 +1,1 @@
+import { FarmWorkspace } from "@/components/FarmWorkspace";export default async function Page({params}:{params:Promise<{id:string;section?:string[]}>}){const {id,section}=await params;return <FarmWorkspace farmId={id} section={section?.[0]||"overview"}/>}
