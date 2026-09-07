@@ -12,6 +12,9 @@ export function ok<T>(data: T, status = 200) {
 
 export function fail(error: unknown) {
   if (error instanceof ApiError) return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+  if (error instanceof Error && (error.message.includes("Can't reach database server") || error.message.includes("P1001"))) {
+    return NextResponse.json({ success: false, message: "Database is unavailable. Start PostgreSQL on localhost:5432, then run the database migration and seed commands." }, { status: 503 });
+  }
   if (error && typeof error === "object") {
     const candidate = error as { status?: unknown; message?: unknown; cause?: { status?: unknown } };
     const status = Number(candidate.status ?? candidate.cause?.status);

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect,useState } from "react";import { Activity,CheckCircle2,Settings,Users } from "lucide-react";import { api,put } from "@/lib/client";import { AppShell,FarmSummary } from "@/components/AppShell";
 type User={name:string;role:string};

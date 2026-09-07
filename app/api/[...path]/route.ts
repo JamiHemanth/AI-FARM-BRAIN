@@ -161,7 +161,7 @@ async function seedCurrentConditions(farmId: string, userId: string) {
     db.sensorReading.create({ data: { farmId, ...reading } }),
     db.weatherReading.create({ data: { farmId, ...weather } })
   ]);
-  return analyzeFarm(farmId, userId);
+  void analyzeFarm(farmId, userId).catch((error) => console.error("Initial farm analysis failed", error));
 }
 
 async function getDashboard(id: string) {

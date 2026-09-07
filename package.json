@@ -10,7 +10,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "vitest run",
+    "test": "prisma generate && vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
